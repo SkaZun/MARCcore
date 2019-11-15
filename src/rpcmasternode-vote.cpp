@@ -341,17 +341,17 @@ UniValue mncommunityvote(const UniValue& params, bool fHelp)
                 break;
             }
 
-            CMasternode* pmn = mnodeman.Find(activeMasternode.vin);
+            CMasternode* pmn = mnodeman.Find(CActiveMasternode().vin);
             if (pmn == NULL) {
                 failed++;
                 statusObj.push_back(Pair("node", "local"));
                 statusObj.push_back(Pair("result", "failed"));
-                statusObj.push_back(Pair("error", "Failure to find masternode in list : " + activeMasternode.vin.ToString()));
+                statusObj.push_back(Pair("error", "Failure to find masternode in list : " + CActiveMasternode().vin.ToString()));
                 resultsObj.push_back(statusObj);
                 break;
             }
 
-            CCommunityVote vote(activeMasternode.vin, hash, nVote);
+            CCommunityVote vote(CActiveMasternode().vin, hash, nVote);
             if (!vote.Sign(keyMasternode, pubKeyMasternode)) {
                 failed++;
                 statusObj.push_back(Pair("node", "local"));

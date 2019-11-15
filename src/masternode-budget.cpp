@@ -2145,16 +2145,17 @@ TrxValidationStatus CFinalizedBudget::IsTransactionValid(const CTransaction& txN
 
 void CFinalizedBudget::SubmitVote()
 {
+  for (CActiveMasternode &activeMasternodeZ : activeMasternode) {
     CPubKey pubKeyMasternode;
     CKey keyMasternode;
     std::string errorMessage;
 
-    if (!masternodeSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode)) {
+    if (!masternodeSigner.SetKey(activeMasternodeZ.strPrivKeyMasternode, errorMessage, keyMasternode, pubKeyMasternode)) {
         LogPrint("mnbudget","CFinalizedBudget::SubmitVote - Error upon calling SetKey\n");
         return;
     }
 
-    CFinalizedBudgetVote vote(activeMasternode.vin, GetHash());
+    CFinalizedBudgetVote vote(activeMasternodeZ.vin, GetHash());
     if (!vote.Sign(keyMasternode, pubKeyMasternode)) {
         LogPrint("mnbudget","CFinalizedBudget::SubmitVote - Failure to sign.");
         return;
@@ -2169,6 +2170,7 @@ void CFinalizedBudget::SubmitVote()
     } else {
         LogPrint("mnbudget","CFinalizedBudget::SubmitVote : Error submitting vote - %s\n", strError);
     }
+  }
 }
 
 CFinalizedBudgetBroadcast::CFinalizedBudgetBroadcast()

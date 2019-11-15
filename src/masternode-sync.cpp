@@ -406,7 +406,8 @@ void CMasternodeSync::Process()
                     GetNextAsset();
 
                     // Try to activate our masternode if possible
-                    activeMasternode.ManageStatus();
+                    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                        activeMasternodeZ.ManageStatus();
 
                     return;
                 }
@@ -416,7 +417,8 @@ void CMasternodeSync::Process()
                     (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3 || GetTime() - nAssetSyncStarted > MASTERNODE_SYNC_TIMEOUT * 5)) {
                     // maybe there is no budgets at all, so just finish syncing
                     GetNextAsset();
-                    activeMasternode.ManageStatus();
+                    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                        activeMasternodeZ.ManageStatus();
                     return;
                 }
 
@@ -441,7 +443,8 @@ void CMasternodeSync::Process()
                     GetNextAsset();
 
                     // Try to activate our masternode if possible
-                    activeMasternode.ManageStatus();
+                    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                        activeMasternodeZ.ManageStatus();
 
                     return;
                 }
@@ -451,7 +454,8 @@ void CMasternodeSync::Process()
                     (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3 || GetTime() - nAssetSyncStarted > MASTERNODE_SYNC_TIMEOUT * 5)) {
                     // maybe there is are no community proposals at all, so just finish syncing
                     GetNextAsset();
-                    activeMasternode.ManageStatus();
+                    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                        activeMasternodeZ.ManageStatus();
                     return;
                 }
 

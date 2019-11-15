@@ -35,7 +35,10 @@ void ThreadMasternodePool()
 
             // check if we should activate or ping every few minutes,
             // start right after sync is considered to be done
-            if (c % MASTERNODE_PING_SECONDS == 0) activeMasternode.ManageStatus();
+            if (c % MASTERNODE_PING_SECONDS == 0) {
+                for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                    activeMasternodeZ.ManageStatus();
+            }
 
             if (c % 60 == 0) {
                 mnodeman.CheckAndRemove();

@@ -23,8 +23,6 @@
 class CActiveMasternode
 {
 private:
-    // critical section to protect the inner data structures
-    mutable CCriticalSection cs;
 
     /// Ping Masternode
     bool SendMasternodePing(std::string& errorMessage);
@@ -40,6 +38,7 @@ public:
     // Initialized by init.cpp
     // Keys for the main Masternode
     CPubKey pubKeyMasternode;
+    std::string strPrivKeyMasternode;
 
     // Initialized while registering Masternode
     CTxIn vin;
@@ -68,6 +67,6 @@ public:
     bool EnableHotColdMasterNode(CTxIn& vin, CService& addr);
 };
 
-extern CActiveMasternode activeMasternode;
+extern std::vector<CActiveMasternode> activeMasternode;
 
 #endif

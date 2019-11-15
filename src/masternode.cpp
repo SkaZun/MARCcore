@@ -570,8 +570,9 @@ bool CMasternodeBroadcast::CheckInputsAndAdd(int& nDoS)
 {
     // we are a masternode with the same vin (i.e. already activated) and this mnb is ours (matches our Masternode privkey)
     // so nothing to do here for us
-    if (fMasterNode && vin.prevout == activeMasternode.vin.prevout && pubKeyMasternode == activeMasternode.pubKeyMasternode)
-        return true;
+    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+        if (fMasterNode && vin.prevout == activeMasternodeZ.vin.prevout && pubKeyMasternode == activeMasternodeZ.pubKeyMasternode)
+            return true;
 
     // incorrect ping or its sigTime
     if (lastPing == CMasternodePing() || !lastPing.CheckAndUpdate(nDoS, false, true)) return false;
@@ -640,9 +641,9 @@ bool CMasternodeBroadcast::CheckInputsAndAdd(int& nDoS)
     mnodeman.Add(mn);
 
     // if it matches our Masternode privkey, then we've been remotely activated
-    if (pubKeyMasternode == activeMasternode.pubKeyMasternode && protocolVersion == PROTOCOL_VERSION) {
-        activeMasternode.EnableHotColdMasterNode(vin, addr);
-    }
+    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+        if (pubKeyMasternode == activeMasternodeZ.pubKeyMasternode && protocolVersion == PROTOCOL_VERSION)
+            activeMasternodeZ.EnableHotColdMasterNode(vin, addr);
 
     bool isLocal = addr.IsRFC1918() || addr.IsLocal();
     if (Params().NetworkID() == CBaseChainParams::REGTEST) isLocal = false;

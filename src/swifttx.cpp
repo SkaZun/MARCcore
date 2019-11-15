@@ -254,16 +254,17 @@ void DoConsensusVote(CTransaction& tx, int64_t nBlockHeight)
 {
     if (!fMasterNode) return;
 
-    int n = mnodeman.GetMasternodeRank(activeMasternode.vin, nBlockHeight, MIN_SWIFTTX_PROTO_VERSION);
+  for (CActiveMasternode &activeMasternodeZ : activeMasternode) {
+    int n = mnodeman.GetMasternodeRank(activeMasternodeZ.vin, nBlockHeight, MIN_SWIFTTX_PROTO_VERSION);
 
     if (n == -1) {
         LogPrint("swifttx", "SwiftTX::DoConsensusVote - Unknown Masternode\n");
-        return;
+        continue;
     }
 
     if (n > SWIFTTX_SIGNATURES_TOTAL) {
         LogPrint("swifttx", "SwiftTX::DoConsensusVote - Masternode not in the top %d (%d)\n", SWIFTTX_SIGNATURES_TOTAL, n);
-        return;
+        continue;
     }
     /*
         nBlockHeight calculated from the transaction is the authoritive source
@@ -272,22 +273,23 @@ void DoConsensusVote(CTransaction& tx, int64_t nBlockHeight)
     LogPrint("swifttx", "SwiftTX::DoConsensusVote - In the top %d (%d)\n", SWIFTTX_SIGNATURES_TOTAL, n);
 
     CConsensusVote ctx;
-    ctx.vinMasternode = activeMasternode.vin;
+    ctx.vinMasternode = activeMasternodeZ.vin;
     ctx.txHash = tx.GetHash();
     ctx.nBlockHeight = nBlockHeight;
     if (!ctx.Sign()) {
         LogPrintf("SwiftTX::DoConsensusVote - Failed to sign consensus vote\n");
-        return;
+        continue;
     }
     if (!ctx.SignatureValid()) {
         LogPrintf("SwiftTX::DoConsensusVote - Signature invalid\n");
-        return;
+        continue;
     }
 
     mapTxLockVote[ctx.GetHash()] = ctx;
 
     CInv inv(MSG_TXLOCK_VOTE, ctx.GetHash());
     RelayInv(inv);
+  }
 }
 
 //received a consensus vote
@@ -487,7 +489,8 @@ bool CConsensusVote::Sign()
     //LogPrintf("signing strMessage %s \n", strMessage.c_str());
     //LogPrintf("signing privkey %s \n", strMasterNodePrivKey.c_str());
 
-    if (!masternodeSigner.SetKey(strMasterNodePrivKey, errorMessage, key2, pubkey2)) {
+  for (CActiveMasternode &activeMasternodeZ : activeMasternode) {
+    if (!masternodeSigner.SetKey(activeMasternodeZ.strPrivKeyMasternode, errorMessage, key2, pubkey2)) {
         LogPrintf("CConsensusVote::Sign() - ERROR: Invalid masternodeprivkey: '%s'\n", errorMessage.c_str());
         return false;
     }
@@ -501,7 +504,7 @@ bool CConsensusVote::Sign()
         LogPrintf("CConsensusVote::Sign() - Verify message failed");
         return false;
     }
-
+  }
     return true;
 }
 

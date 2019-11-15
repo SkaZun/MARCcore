@@ -1648,21 +1648,23 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             }
         }
 
-        strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
-        if (!strMasterNodePrivKey.empty()) {
-            std::string errorMessage;
-
-            CKey key;
-            CPubKey pubkey;
-
-            if (!masternodeSigner.SetKey(strMasterNodePrivKey, errorMessage, key, pubkey)) {
-                return InitError(_("Invalid masternodeprivkey. Please see documenation."));
+        //strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
+        vector<std::string> vMasterNodePrivKeys = mapMultiArgs["-masternodeprivkey"];
+        for (std::string strKey : vMasterNodePrivKeys) {
+            if (!strKey.empty()) {
+                std::string errorMessage;
+                CKey key;
+                CPubKey pubkey;
+                CActiveMasternode actMasternode;
+                if (!masternodeSigner.SetKey(strKey, errorMessage, key, pubkey)) {
+                    return InitError(_("Invalid masternodeprivkey. Please see documenation."));
+                }
+                actMasternode.pubKeyMasternode = pubkey;
+                actMasternode.strPrivKeyMasternode = strKey;
+                activeMasternode.push_back(actMasternode);
+            } else {
+                return InitError(_("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
             }
-
-            activeMasternode.pubKeyMasternode = pubkey;
-
-        } else {
-            return InitError(_("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
         }
     }
 

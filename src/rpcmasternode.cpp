@@ -380,16 +380,24 @@ UniValue masternodedebug (const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("masternodedebug", "") + HelpExampleRpc("masternodedebug", ""));
 
-    if (activeMasternode.status != ACTIVE_MASTERNODE_INITIAL || !masternodeSync.IsSynced())
-        return activeMasternode.GetStatus();
-
-    CTxIn vin = CTxIn();
-    CPubKey pubkey;
-    CKey key;
-    if (!activeMasternode.GetMasterNodeVin(vin, pubkey, key))
-        throw runtime_error("Missing masternode input, please look at the documentation for instructions on masternode creation\n");
-    else
-        return activeMasternode.GetStatus();
+    UniValue ret(UniValue::VARR);
+    for (CActiveMasternode &activeMasternodeZ : activeMasternode) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("outpoint", activeMasternodeZ.vin.ToString()));
+        if (activeMasternodeZ.status != ACTIVE_MASTERNODE_INITIAL || !masternodeSync.IsSynced()) {
+            obj.push_back(Pair("message", activeMasternodeZ.GetStatus()));
+        } else {
+            CTxIn vin = CTxIn();
+            CPubKey pubkey;
+            CKey key;
+            if (!activeMasternodeZ.GetMasterNodeVin(vin, pubkey, key))
+                obj.push_back(Pair("message", "Missing masternode input, please look at the documentation for instructions on masternode creation\n"));
+            else
+                obj.push_back(Pair("message", activeMasternodeZ.GetStatus()));
+        }
+        ret.push_back(obj);
+    }
+    return ret;
 }
 
 UniValue startmasternode (const UniValue& params, bool fHelp)
@@ -444,14 +452,20 @@ UniValue startmasternode (const UniValue& params, bool fHelp)
     if (strCommand == "local") {
         if (!fMasterNode) throw runtime_error("you must set masternode=1 in the configuration\n");
 
-        if (activeMasternode.status != ACTIVE_MASTERNODE_STARTED) {
-            activeMasternode.status = ACTIVE_MASTERNODE_INITIAL; // TODO: consider better way
-            activeMasternode.ManageStatus();
-            if (fLock)
-                pwalletMain->Lock();
+        UniValue mnObj(UniValue::VOBJ);
+        for (CActiveMasternode &activeMasternodeZ : activeMasternode) {
+            if (activeMasternodeZ.status != ACTIVE_MASTERNODE_STARTED) {
+                activeMasternodeZ.status = ACTIVE_MASTERNODE_INITIAL; // TODO: consider better way
+                activeMasternodeZ.ManageStatus();
+                mnObj.push_back(Pair("txhash", activeMasternodeZ.vin.prevout.hash.ToString()));
+                mnObj.push_back(Pair("outputidx", (uint64_t)activeMasternodeZ.vin.prevout.n));
+                mnObj.push_back(Pair("message", activeMasternodeZ.GetStatus()));
+            }
         }
 
-        return activeMasternode.GetStatus();
+        if (fLock)
+            pwalletMain->Lock();
+        return mnObj;
     }
 
     if (strCommand == "all" || strCommand == "many" || strCommand == "missing" || strCommand == "disabled") {
@@ -486,7 +500,10 @@ UniValue startmasternode (const UniValue& params, bool fHelp)
                 if (strCommand == "disabled" && pmn->IsEnabled()) continue;
             }
 
-            bool result = activeMasternode.CreateBroadcast(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), errorMessage, mnb);
+            bool result = false;
+            for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                if (activeMasternodeZ.strPrivKeyMasternode == mne.getPrivKey())
+                    result = activeMasternodeZ.CreateBroadcast(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), errorMessage, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
             statusObj.push_back(Pair("alias", mne.getAlias()));
@@ -531,7 +548,10 @@ UniValue startmasternode (const UniValue& params, bool fHelp)
             std::string errorMessage;
             CMasternodeBroadcast mnb;
 
-            bool result = activeMasternode.CreateBroadcast(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), errorMessage, mnb);
+            bool result = false;
+            for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+                if (activeMasternodeZ.strPrivKeyMasternode == mne.getPrivKey())
+                    result = activeMasternodeZ.CreateBroadcast(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), errorMessage, mnb);
 
             statusObj.push_back(Pair("result", result ? "successful" : "failed"));
 
@@ -604,7 +624,9 @@ UniValue getmasternodeoutputs (const UniValue& params, bool fHelp)
             HelpExampleCli("getmasternodeoutputs", "") + HelpExampleRpc("getmasternodeoutputs", ""));
 
     // Find possible candidates
-    vector<COutput> possibleCoins = activeMasternode.SelectCoinsMasternode();
+    vector<COutput> possibleCoins;
+    for (CActiveMasternode &activeMasternodeZ : activeMasternode)
+        possibleCoins = activeMasternodeZ.SelectCoinsMasternode();
 
     UniValue ret(UniValue::VARR);
     BOOST_FOREACH (COutput& out, possibleCoins) {
@@ -701,20 +723,21 @@ UniValue getmasternodestatus (const UniValue& params, bool fHelp)
 
     if (!fMasterNode) throw runtime_error("This is not a masternode");
 
-    CMasternode* pmn = mnodeman.Find(activeMasternode.vin);
-
-    if (pmn) {
+    UniValue ret(UniValue::VARR);
+    for (CActiveMasternode &activeMasternodeZ : activeMasternode) {
         UniValue mnObj(UniValue::VOBJ);
-        mnObj.push_back(Pair("txhash", activeMasternode.vin.prevout.hash.ToString()));
-        mnObj.push_back(Pair("outputidx", (uint64_t)activeMasternode.vin.prevout.n));
-        mnObj.push_back(Pair("netaddr", activeMasternode.service.ToString()));
-        mnObj.push_back(Pair("addr", CBitcoinAddress(pmn->pubKeyCollateralAddress.GetID()).ToString()));
-        mnObj.push_back(Pair("status", activeMasternode.status));
-        mnObj.push_back(Pair("message", activeMasternode.GetStatus()));
-        return mnObj;
+        CMasternode* pmn = mnodeman.Find(activeMasternodeZ.vin);
+        if (pmn) {
+            mnObj.push_back(Pair("txhash", activeMasternodeZ.vin.prevout.hash.ToString()));
+            mnObj.push_back(Pair("outputidx", (uint64_t)activeMasternodeZ.vin.prevout.n));
+            mnObj.push_back(Pair("netaddr", activeMasternodeZ.service.ToString()));
+            mnObj.push_back(Pair("addr", CBitcoinAddress(pmn->pubKeyCollateralAddress.GetID()).ToString()));
+            mnObj.push_back(Pair("status", activeMasternodeZ.status));
+            mnObj.push_back(Pair("message", activeMasternodeZ.GetStatus()));
+            ret.push_back(mnObj);
+        }
     }
-    throw runtime_error("Masternode not found in the list of available masternodes. Current status: "
-                        + activeMasternode.GetStatus());
+    return ret;
 }
 
 UniValue getmasternodewinners (const UniValue& params, bool fHelp)
